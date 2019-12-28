@@ -3,6 +3,7 @@ import {ChartManager} from './chart_manager'
 import * as themes from './themes'
 import {ChartSettings} from './chart_settings'
 
+
 export class TableLayout extends areas.ChartAreaGroup {
 
     constructor(name) {
@@ -203,21 +204,27 @@ export class TableLayout extends areas.ChartAreaGroup {
                 upper.setBottom(upperBottom);
                 lower.setTop(lowerTop);
             }
+
             return this;
         }
+
+        const mgr = ChartManager.instance;
         let i, cnt = this._areas.length - 2;
         for (i = 0; i < cnt; i += 2) {
-            let b = this._areas[i].getBottom();
-            if (y >= b - 4 && y < b + 4) {
-                ChartManager.instance.showCursor('n-resize');
+            const area = this._areas[i];
+            let bottom = area.getBottom();
+            if (y >= bottom - 4 && y < bottom + 4) {
+                mgr.showCursor('n-resize');
                 return this;
             }
         }
+
         return null;
     }
 
     onMouseLeave(x, y) {
         this._focusedRowIndex = -1;
+        this._hoverRowIndicator = null;
     }
 
     onMouseDown(x, y) {
@@ -232,6 +239,7 @@ export class TableLayout extends areas.ChartAreaGroup {
                 return this;
             }
         }
+
         return null;
     }
 

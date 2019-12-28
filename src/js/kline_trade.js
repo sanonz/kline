@@ -31,14 +31,14 @@ export class KlineTrade {
         this.lastDepth = null;
         this.curPrice = null;
         this.klineTradeInit = false;
-        $("#trades .trades_list").empty();
-        $("#gasks .table").empty();
-        $("#gbids .table").empty();
-        $("#asks .table").empty();
-        $("#bids .table").empty();
+        // $("#trades .trades_list").empty();
+        // $("#gasks .table").empty();
+        // $("#gbids .table").empty();
+        // $("#asks .table").empty();
+        // $("#bids .table").empty();
     }
 
-    pushTrades(array) {
+    /* pushTrades(array) {
         let $trades = $("#trades .trades_list");
         let totalUls = "";
         for (let i = 0; i < array.length; i++) {
@@ -121,7 +121,7 @@ export class KlineTrade {
             $(this).removeClass("newul");
         });
         $trades.find("ul:gt(" + (this.tradesLimit - 1) + ")").remove();
-    }
+    } */
 
     updateDepth(data) {
         ChartManager.instance.getChart().updateDepth(data);

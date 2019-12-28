@@ -93,7 +93,19 @@ export class MainDataSource extends DataSource {
         return this._dataItems[index];
     }
 
+    dataformat(item) {
+        return {
+            date: item[0],
+            open: item[1],
+            high: item[2],
+            low: item[3],
+            close: item[4],
+            volume: item[5]
+        };
+    }
+
     update(data) {
+        this.unshiftData = false;
         this._updatedCount = 0;
         this._appendedCount = 0;
         this._erasedCount = 0;
@@ -113,14 +125,7 @@ export class MainDataSource extends DataSource {
                         this.setUpdateMode(DataSource.UpdateMode.DoNothing);
                     } else {
                         this.setUpdateMode(DataSource.UpdateMode.Update);
-                        this._dataItems[lastIndex] = {
-                            date: e[0],
-                            open: e[1],
-                            high: e[2],
-                            low: e[3],
-                            close: e[4],
-                            volume: e[5]
-                        };
+                        this._dataItems[lastIndex] = this.dataformat(e);
                         this._updatedCount++;
                     }
                     i++;
@@ -128,14 +133,7 @@ export class MainDataSource extends DataSource {
                         this.setUpdateMode(DataSource.UpdateMode.Append);
                         for (; i < cnt; i++, this._appendedCount++) {
                             e = data[i];
-                            this._dataItems.push({
-                                date: e[0],
-                                open: e[1],
-                                high: e[2],
-                                low: e[3],
-                                close: e[4],
-                                volume: e[5]
-                            });
+                            this._dataItems.push(this.dataformat(e));
                         }
                     }
                     return true;
@@ -156,15 +154,27 @@ export class MainDataSource extends DataSource {
                 if (this._decimalDigits < d)
                     this._decimalDigits = d;
             }
-            this._dataItems.push({
-                date: e[0],
-                open: e[1],
-                high: e[2],
-                low: e[3],
-                close: e[4],
-                volume: e[5]
-            });
+            this._dataItems.push(this.dataformat(e));
         }
+
+        return true;
+    }
+
+    unshift(data) {
+        this._appendedCount = 0;
+        this._erasedCount = 0;
+        this._updatedCount = data.length;
+        this._dataItems.unshift(...data.map(item => this.dataformat(item)));
+        data.forEach(item => {
+            const time = typeof item[0] === 'string' ? new Date(item[0]).getTime() : item[0];
+
+            if (!this._dataItems.find(v => v.date) === time) {
+                this._dataItems.unshift(this.dataformat(item));
+            }
+        });
+        this.setUpdateMode(DataSource.UpdateMode.Refresh),
+        this.unshiftData = true;
+
         return true;
     }
 

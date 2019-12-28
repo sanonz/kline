@@ -1,6 +1,7 @@
 import {NamedObject} from './named_object'
 import {ChartManager} from './chart_manager'
 import {DataSource} from './data_sources'
+import { Control } from './control';
 
 export class Timeline extends NamedObject {
 
@@ -26,7 +27,6 @@ export class Timeline extends NamedObject {
         this._selectedIndex = -1;
         this._savedFirstIndex = -1;
     }
-
 
     isLatestShown() {
         return this.getLastIndex() === this._maxIndex;
@@ -136,21 +136,28 @@ export class Timeline extends NamedObject {
         if (this._maxIndex < 1) {
             return -1;
         }
-        if (firstIndex < 0) {
-            return 0;
-        }
-        let lastFirst = Math.max(0, this._maxIndex - 1 /*maxItemCount*/);
+
+        let spill = Math.min(this._maxIndex, 10);
+        let lastFirst = Math.max(0, this._maxIndex - spill);
         if (firstIndex > lastFirst) {
             return lastFirst;
         }
+        if (firstIndex + maxItemCount < spill) {
+            firstIndex = spill - maxItemCount;
+        }
+        if (firstIndex < 0) {
+            Control.requestOverHttp(true);
+        }
+
         return firstIndex;
     }
 
     validateSelectedIndex() {
-        if (this._selectedIndex < this._firstIndex)
+        if (this._selectedIndex < this._firstIndex) {
             this._selectedIndex = -1;
-        else if (this._selectedIndex >= this.getLastIndex())
+        } else if (this._selectedIndex >= this.getLastIndex()) {
             this._selectedIndex = -1;
+        }
     }
 
     onLayout() {
@@ -199,10 +206,17 @@ export class Timeline extends NamedObject {
         this._maxIndex = ds.getDataCount();
         switch (ds.getUpdateMode()) {
             case DataSource.UpdateMode.Refresh:
-                if (this._maxIndex < 1)
+                if (this._maxIndex < 1) {
                     this._firstIndex = -1;
-                else
-                    this._firstIndex = Math.max(this._maxIndex - this._maxItemCount, 0);
+                }  else {
+                    if (ds.unshiftData) {
+                        this._firstIndex += ds.getUpdatedCount();
+                    } else {
+                        this._firstIndex = Math.max(this._maxIndex - this._maxItemCount, 0);
+                        this._selectedIndex = -1;
+                        this.setUpdated(true);
+                    }
+                }
                 this._selectedIndex = -1;
                 this._updated = true;
                 break;

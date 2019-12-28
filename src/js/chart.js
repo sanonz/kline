@@ -95,7 +95,7 @@ export class Chart {
         ChartManager.instance.setNormalMode();
         let f = Kline.instance.chartMgr.getDataSource("frame0.k0").getLastDate();
 
-        $('.symbol-title>a').text(Kline.instance.symbolName);
+        // $('.symbol-title>a').text(Kline.instance.symbolName);
 
         if (f === -1) {
             Kline.instance.requestParam = Control.setHttpRequestParam(Kline.instance.symbol, Kline.instance.range, Kline.instance.limit, null);
@@ -120,9 +120,11 @@ export class Chart {
 
     setCurrentPeriod(period) {
         this._range = Kline.instance.periodMap[period];
-        if (Kline.instance.type === "stomp" && Kline.instance.stompClient.ws.readyState === 1) {
-            Kline.instance.subscribed.unsubscribe();
-            Kline.instance.subscribed = Kline.instance.stompClient.subscribe(Kline.instance.subscribePath + '/' + Kline.instance.symbol + '/' + this._range, Control.subscribeCallback);
+        if (Kline.instance.type === "stomp") {
+            if (Kline.instance.stompClient.ws.readyState === 1) {
+                Kline.instance.subscribed.unsubscribe();
+                Kline.instance.subscribed = Kline.instance.stompClient.subscribe(Kline.instance.subscribePath + '/' + Kline.instance.symbol + '/' + this._range, Control.subscribeCallback);
+            }
         }
         this.updateDataAndDisplay();
         Kline.instance.onRangeChange(this._range);
@@ -188,18 +190,25 @@ export class Chart {
         ChartManager.instance.redraw('All', true);
     }
 
+    setIndicators(indics) {
+        let mgr = ChartManager.instance;
+        mgr.removeIndicatorInterface(3, !1),
+        mgr.removeIndicatorInterface(2, !1),
+        mgr.removeIndicatorInterface(1, !1);
+        for (var i = 0, len = indics.length; i < len; ++i) {
+            mgr.setIndicatorInterface(i + 1, indics[i]);
+        }
+        mgr._selectedIndicators = indics,
+        mgr.redraw("All", true);
+    }
+
     setIndicator(index, indicName) {
         if (indicName === 'NONE') {
-            let index = 2;
-            if (Template.displayVolume === false)
-                index = 1;
             let areaName = ChartManager.instance.getIndicatorAreaName('frame0.k0', index);
-            if (areaName !== '')
+            if (areaName !== '') {
                 ChartManager.instance.removeIndicator(areaName);
+            }
         } else {
-            let index = 2;
-            if (Template.displayVolume === false)
-                index = 1;
             let areaName = ChartManager.instance.getIndicatorAreaName('frame0.k0', index);
             if (areaName === '') {
                 Template.createIndicatorChartComps('frame0.k0', indicName);
@@ -207,11 +216,6 @@ export class Chart {
                 ChartManager.instance.setIndicator(areaName, indicName);
             }
         }
-        ChartManager.instance.redraw('All', true);
-    }
-
-    addIndicator(indicName) {
-        ChartManager.instance.addIndicator(indicName);
         ChartManager.instance.redraw('All', true);
     }
 

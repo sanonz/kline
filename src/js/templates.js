@@ -28,9 +28,9 @@ export class Template {
 
     static createTableComps(dsName) {
         this.createMainChartComps(dsName);
-        if (this.displayVolume) {
-            this.createIndicatorChartComps(dsName, "VOLUME");
-        }
+        // if (this.displayVolume) {
+        //     this.createIndicatorChartComps(dsName, "VOLUME");
+        // }
         this.createTimelineComps(dsName);
     }
 
@@ -83,7 +83,7 @@ export class Template {
         let tableLayout = mgr.getArea(dsName + ".charts");
         let areaName = dsName + ".indic" + tableLayout.getNextRowId();
         let rangeAreaName = areaName + "Range";
-        let area = new areas.IndicatorArea(areaName);
+        let area = new areas.IndicatorArea(indicName, areaName);
         mgr.setArea(areaName, area);
         tableLayout.addArea(area);
         let rowIndex = tableLayout.getAreaCount() >> 1;
@@ -115,6 +115,8 @@ export class Template {
         mgr.setPlotter(plotter.getName(), plotter);
         plotter = new plotters.IndicatorInfoPlotter(areaName + ".info");
         mgr.setPlotter(plotter.getName(), plotter);
+        plotter = new plotters.IndicatorTabPlotter(areaName + ".tab");
+        mgr.setPlotter(plotter.getName(), plotter);
         plotter = new plotters.SelectionPlotter(areaName + ".selection");
         mgr.setPlotter(plotter.getName(), plotter);
         plotter = new plotters.RangeAreaBackgroundPlotter(areaName + "Range.background");
@@ -143,8 +145,8 @@ export class Template {
         let plotter;
         plotter = new plotters.BackgroundPlotter(dsName + ".main.background");
         mgr.setPlotter(plotter.getName(), plotter);
-        plotter = new plotters.CLiveOrderPlotter(dsName + ".main.main");
-        mgr.setPlotter(plotter.getName(), plotter);
+        // plotter = new plotters.CLiveOrderPlotter(dsName + ".main.main");
+        // mgr.setPlotter(plotter.getName(), plotter);
     }
 
     static createLiveTradeComps(dsName) {
@@ -152,8 +154,8 @@ export class Template {
         let plotter;
         plotter = new plotters.BackgroundPlotter(dsName + ".main.background");
         mgr.setPlotter(plotter.getName(), plotter);
-        plotter = new plotters.CLiveTradePlotter(dsName + ".main.main");
-        mgr.setPlotter(plotter.getName(), plotter);
+        // plotter = new plotters.CLiveTradePlotter(dsName + ".main.main");
+        // mgr.setPlotter(plotter.getName(), plotter);
     }
 
 }

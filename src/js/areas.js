@@ -1,6 +1,8 @@
 import {NamedObject} from './named_object'
 import {ChartManager} from './chart_manager'
+import {ChartSettings} from './chart_settings'
 import {MEvent} from './mevent'
+
 
 export class ChartArea extends NamedObject {
 
@@ -284,11 +286,22 @@ export class MainArea extends ChartArea {
 
 export class IndicatorArea extends ChartArea {
 
-    constructor(name) {
-        super(name);
+    
+    static tabWidth = 0;
+    static tabSpace = 3;
+    static tabHeight = 22;
+    static tabMapping = [];
+    static tabIndics = [ 'VOLUME', 'MACD', 'KDJ', 'StochRSI', 'RSI', 'DMI', 'OBV', 'BOLL', 'SAR', 'DMA', 'TRIX', 'BRAR', 'VR', 'EMV', 'WR', 'ROC', 'MTM', 'PSY' ];
+
+    constructor(key, areaname) {
+        super(areaname);
         this._dragStarted = false;
         this._oldX = 0;
         this._oldY = 0;
+        this._key = key;
+
+        // tabs
+        this._hoverRowIndicator = null;
     }
 
     onMouseMove(x, y) {
@@ -300,11 +313,38 @@ export class IndicatorArea extends ChartArea {
                 }
             }
         }
+
         if (this._dragStarted) {
             mgr.hideCursor();
             mgr.getTimeline(this.getDataSourceName()).move(x - this._oldX);
             return this;
         }
+
+        const ctr = this.constructor;
+        this._hoverRowIndicator = null;
+        let bottom = this.getBottom();
+        if (
+            y > bottom - ctr.tabHeight - 4 && y < bottom - 4 &&
+            x >= this.getLeft() && x < ctr.tabWidth
+        ) {
+            let t = 0;
+            for(let i = 0, len = ctr.tabMapping.length; i < len; i++) {
+                t += ctr.tabMapping[i] + ctr.tabSpace * 2;
+                if (x <= t) {
+                    const name = ctr.tabIndics[i];
+
+                    if (ChartSettings.get().charts.indics.indexOf(name) > -1) {
+                        mgr.showCursor('not-allowed');
+                    } else {
+                        this._hoverRowIndicator = {area: this, index: i, name};
+                        mgr.showCursor('pointer');
+                    }
+
+                    return this;
+                }
+            }
+        }
+
         switch (mgr._drawingTool) {
             case ChartManager.DrawingTool.CrossCursor:
                 if (mgr.showCrossCursor(this, x, y))
@@ -316,6 +356,7 @@ export class IndicatorArea extends ChartArea {
                 mgr.showCursor();
                 break;
         }
+
         return this;
     }
 
@@ -330,6 +371,21 @@ export class IndicatorArea extends ChartArea {
         this._oldX = x;
         this._oldY = y;
         this._dragStarted = false;
+
+        
+
+        if (this._hoverRowIndicator) {
+            const indics = ChartSettings.get().charts.indics;
+            const { area, name } = this._hoverRowIndicator;
+            if (indics.indexOf(name) === -1) {
+                mgr.setIndicator(area.getName(), name);
+
+                indics.splice(indics.indexOf(area._key), 1, name);
+                ChartSettings.save();
+                area._key = name;
+            }
+        }
+        
         return this;
     }
 
@@ -429,7 +485,7 @@ export class ChartAreaGroup extends ChartArea {
         let i, cnt = this._areas.length;
         for (i = 0; i < cnt; i++) {
             if (area === this._areas[i]) {
-                this._areas.splice(i);
+                this._areas.splice(i, 1);
                 this.setChanged(true);
                 break;
             }

@@ -1,6 +1,7 @@
 import Kline from './kline'
 import {NamedObject} from './named_object'
 import {ChartManager} from './chart_manager'
+import {ChartSettings} from './chart_settings'
 import {Util} from './util'
 import {CPoint} from './cpoint'
 import * as exprs from './exprs'
@@ -189,26 +190,6 @@ export class RangeAreaBackgroundPlotter extends BackgroundPlotter {
 }
 
 
-export class TimelineAreaBackgroundPlotter extends BackgroundPlotter {
-
-    constructor(name) {
-        super(name);
-    }
-
-    Draw(context) {
-        let mgr = ChartManager.instance;
-        let area = mgr.getArea(this.getAreaName());
-        let timeline = mgr.getTimeline(this.getDataSourceName());
-        if (!area.isChanged() && !timeline.isUpdated())
-            return;
-        let theme = mgr.getTheme(this.getFrameName());
-        context.fillStyle = theme.getColor(this._color);
-        context.fillRect(area.getLeft(), area.getTop(), area.getWidth(), area.getHeight());
-    }
-
-}
-
-
 export class CGridPlotter extends NamedObject {
 
     constructor(name) {
@@ -276,10 +257,11 @@ export class CandlestickPlotter extends NamedObject {
         let first = timeline.getFirstIndex();
         let last = timeline.getLastIndex();
         let start;
-        if (area.isChanged() || timeline.isUpdated() || range.isUpdated())
+        if (area.isChanged() || timeline.isUpdated() || range.isUpdated()) {
             start = first;
-        else
+        } else {
             start = Math.max(first, last - 2);
+        }
         let cW = timeline.getColumnWidth();
         let iW = timeline.getItemWidth();
         let left = timeline.toItemLeft(start);
@@ -290,46 +272,55 @@ export class CandlestickPlotter extends NamedObject {
         let fillNegRects = [];
         for (let i = start; i < last; i++) {
             let data = ds.getDataAt(i);
-            let high = range.toY(data.high);
-            let low = range.toY(data.low);
-            let open = data.open;
-            let close = data.close;
-            if (close > open) {
-                let top = range.toY(close);
-                let bottom = range.toY(open);
-                let iH = Math.max(bottom - top, 1);
-                if (iH > 1 && iW > 1 && dark)
-                    strokePosRects.push({x: left + 0.5, y: top + 0.5, w: iW - 1, h: iH - 1});
-                else
-                    fillPosRects.push({x: left, y: top, w: Math.max(iW, 1), h: Math.max(iH, 1)});
-                if (data.high > close) {
-                    high = Math.min(high, top - 1);
-                    fillPosRects.push({x: center, y: high, w: 1, h: top - high});
+            if (data) {    
+                let high = range.toY(data.high);
+                let low = range.toY(data.low);
+                let open = data.open;
+                let close = data.close;
+                if (close > open) {
+                    let top = range.toY(close);
+                    let bottom = range.toY(open);
+                    let iH = Math.max(bottom - top, 1);
+                    if (iH > 1 && iW > 1 && dark) {
+                        strokePosRects.push({x: left + 0.5, y: top + 0.5, w: iW - 1, h: iH - 1});
+                    } else {
+                        fillPosRects.push({x: left, y: top, w: Math.max(iW, 1), h: Math.max(iH, 1)});
+                    }
+                    if (data.high > close) {
+                        high = Math.min(high, top - 1);
+                        fillPosRects.push({x: center, y: high, w: 1, h: top - high});
+                    }
+                    if (open > data.low) {
+                        low = Math.max(low, bottom + 1);
+                        fillPosRects.push({x: center, y: bottom, w: 1, h: low - bottom});
+                    }
+                } else if (close === open) {
+                    let top = range.toY(close);
+                    fillUchRects.push({x: left, y: top, w: Math.max(iW, 1), h: 1});
+                    if (data.high > close) {
+                        high = Math.min(high, top - 1);
+                    }
+                    if (open > data.low) {
+                        low = Math.max(low, top + 1);
+                    }
+                    if (high < low) {
+                        fillUchRects.push({x: center, y: high, w: 1, h: low - high});
+                    }
+                } else {
+                    let top = range.toY(open);
+                    let bottom = range.toY(close);
+                    let iH = Math.max(bottom - top, 1);
+                    fillNegRects.push({x: left, y: top, w: Math.max(iW, 1), h: Math.max(iH, 1)});
+                    if (data.high > open) {
+                        high = Math.min(high, top - 1);
+                    }
+                    if (close > data.low) {
+                        low = Math.max(low, bottom + 1);
+                    }
+                    if (high < low) {
+                        fillNegRects.push({x: center, y: high, w: 1, h: low - high});
+                    }
                 }
-                if (open > data.low) {
-                    low = Math.max(low, bottom + 1);
-                    fillPosRects.push({x: center, y: bottom, w: 1, h: low - bottom});
-                }
-            } else if (close === open) {
-                let top = range.toY(close);
-                fillUchRects.push({x: left, y: top, w: Math.max(iW, 1), h: 1});
-                if (data.high > close)
-                    high = Math.min(high, top - 1);
-                if (open > data.low)
-                    low = Math.max(low, top + 1);
-                if (high < low)
-                    fillUchRects.push({x: center, y: high, w: 1, h: low - high});
-            } else {
-                let top = range.toY(open);
-                let bottom = range.toY(close);
-                let iH = Math.max(bottom - top, 1);
-                fillNegRects.push({x: left, y: top, w: Math.max(iW, 1), h: Math.max(iH, 1)});
-                if (data.high > open)
-                    high = Math.min(high, top - 1);
-                if (close > data.low)
-                    low = Math.max(low, bottom + 1);
-                if (high < low)
-                    fillNegRects.push({x: center, y: high, w: 1, h: low - high});
             }
             left += cW;
             center += cW;
@@ -513,6 +504,10 @@ export class OHLCPlotter extends Plotter {
         let fillNegRects = [];
         for (let i = start; i < last; i++) {
             let data = ds.getDataAt(i);
+            if (data === 0) {
+                break;
+            }
+
             let high = range.toY(data.high);
             let low = range.toY(data.low);
             let iH = Math.max(low - high, 1);
@@ -576,7 +571,7 @@ export class MainInfoPlotter extends Plotter {
         context.fillStyle = theme.getColor(themes.Theme.Color.Text4);
         let rect = {
             x: area.getLeft() + 4,
-            y: area.getTop() + 2,
+            y: area.getTop() + 4,
             w: area.getWidth() - 8,
             h: 20
         };
@@ -805,26 +800,28 @@ export class IndicatorPlotter extends NamedObject {
         let fillNegRects = [];
         for (let i = first; i < last; i++) {
             let data = ds.getDataAt(i);
-            let top = range.toY(data.volume);
-            let iH = range.toHeight(data.volume);
-            if (data.close > data.open) {
-                if (iH > 1 && iW > 1 && dark) {
-                    strokePosRects.push({x: left + 0.5, y: top + 0.5, w: iW - 1, h: iH - 1});
-                } else {
-                    fillPosRects.push({x: left, y: top, w: Math.max(iW, 1), h: Math.max(iH, 1)});
-                }
-            } else if (data.close === data.open) {
-                if (i > 0 && data.close >= ds.getDataAt(i - 1).close) {
+            if (data) {
+                let top = range.toY(data.volume);
+                let iH = range.toHeight(data.volume);
+                if (data.close > data.open) {
                     if (iH > 1 && iW > 1 && dark) {
                         strokePosRects.push({x: left + 0.5, y: top + 0.5, w: iW - 1, h: iH - 1});
                     } else {
                         fillPosRects.push({x: left, y: top, w: Math.max(iW, 1), h: Math.max(iH, 1)});
                     }
+                } else if (data.close === data.open) {
+                    if (i > 0 && data.close >= ds.getDataAt(i - 1).close) {
+                        if (iH > 1 && iW > 1 && dark) {
+                            strokePosRects.push({x: left + 0.5, y: top + 0.5, w: iW - 1, h: iH - 1});
+                        } else {
+                            fillPosRects.push({x: left, y: top, w: Math.max(iW, 1), h: Math.max(iH, 1)});
+                        }
+                    } else {
+                        fillNegRects.push({x: left, y: top, w: Math.max(iW, 1), h: Math.max(iH, 1)});
+                    }
                 } else {
                     fillNegRects.push({x: left, y: top, w: Math.max(iW, 1), h: Math.max(iH, 1)});
                 }
-            } else {
-                fillNegRects.push({x: left, y: top, w: Math.max(iW, 1), h: Math.max(iH, 1)});
             }
             left += cW;
         }
@@ -934,49 +931,26 @@ export class IndicatorInfoPlotter extends Plotter {
         context.textAlign = "left";
         context.textBaseline = "top";
         context.fillStyle = theme.getColor(themes.Theme.Color.Text4);
-        let rect = {
+        const rect = {
             x: area.getLeft() + 4,
-            y: area.getTop() + 2,
+            y: area.getTop() + 4,
             w: area.getWidth() - 8,
             h: 20
         };
-        let indic = dp.getIndicator();
-        let title;
-        switch (indic.getParameterCount()) {
-            case 0:
-                title = indic.getName();
-                break;
-            case 1:
-                title = indic.getName() + "(" +
-                    indic.getParameterAt(0).getValue() +
-                    ")";
-                break;
-            case 2:
-                title = indic.getName() + "(" +
-                    indic.getParameterAt(0).getValue() + "," +
-                    indic.getParameterAt(1).getValue() +
-                    ")";
-                break;
-            case 3:
-                title = indic.getName() + "(" +
-                    indic.getParameterAt(0).getValue() + "," +
-                    indic.getParameterAt(1).getValue() + "," +
-                    indic.getParameterAt(2).getValue() +
-                    ")";
-                break;
-            case 4:
-                title = indic.getName() + "(" +
-                    indic.getParameterAt(0).getValue() + "," +
-                    indic.getParameterAt(1).getValue() + "," +
-                    indic.getParameterAt(2).getValue() + "," +
-                    indic.getParameterAt(3).getValue() +
-                    ")";
-                break;
-            default:
-                return;
+        const indic = dp.getIndicator();
+        let title = indic.getName();
+        const values = [];
+        const count = indic.getParameterCount();
+        if (count > 0) {
+            for(let i = 0; i < count; i++) {
+                values.push(indic.getParameterAt(i).getValue());
+            }
         }
-        if (!Plotter.drawString(context, title, rect))
+
+        const text = title && values.length ? title + '(' + values.join(',') + ')' : null;
+        if (!Plotter.drawString(context, text, rect))
             return;
+
         let selIndex = timeline.getSelectedIndex();
         if (selIndex < 0)
             return;
@@ -995,6 +969,54 @@ export class IndicatorInfoPlotter extends Plotter {
             if (!Plotter.drawString(context, info, rect))
                 return;
         }
+    }
+
+}
+
+export class IndicatorTabPlotter extends NamedObject {
+
+    constructor(name) {
+        super(name);
+    }
+
+    Draw(context) {
+        const mgr = ChartManager.instance;
+        const area = mgr.getArea(this.getAreaName());
+        const theme = mgr.getTheme(this.getFrameName());
+        const indicator = area._hoverRowIndicator;
+        const indics = ChartSettings.get().charts.indics;
+        const ctr = area.constructor;
+
+        context.font = theme.getFont(themes.Theme.Font.Default);
+        context.textAlign = "left";
+        context.textBaseline = "top";
+
+        if (!ctr.tabMapping.length) {
+            ctr.tabMapping = ctr.tabIndics.map(text => context.measureText(text).width);
+            ctr.tabWidth = ctr.tabMapping.reduce((a, b) => a + b + ctr.tabSpace * 2, 0);
+        }
+
+        let x = 0;
+        const height = parseInt(context.font);
+        const offset = (ctr.tabHeight - height) / 2;
+        ctr.tabIndics.forEach((text, idx) => {
+            const width = ctr.tabMapping[idx];
+
+            if (area._key === text) {
+                context.fillStyle = '#5795F1';
+            } else if (indics.indexOf(text) > -1) {
+                context.fillStyle = theme.getColor(themes.Theme.Color.Text0);
+            } else if (indicator && indicator.area.getName() + '.tab' === this.getName() && indicator.name === text) {
+                context.fillStyle = theme.getColor(themes.Theme.Color.Text4);
+            } else {
+                context.fillStyle = theme.getColor(themes.Theme.Color.Text2);
+            }
+
+            let y = area.getBottom() - height - offset;
+            x += ctr.tabSpace;
+            context.fillText(text, x, y);
+            x += width + ctr.tabSpace;
+        });
     }
 
 }
@@ -1097,25 +1119,29 @@ export class TimelinePlotter extends Plotter {
     }
 
     Draw(context) {
-
         let mgr = ChartManager.instance;
         let area = mgr.getArea(this.getAreaName());
         let timeline = mgr.getTimeline(this.getDataSourceName());
-        if (!area.isChanged() && !timeline.isUpdated())
+        if (!area.isChanged() && !timeline.isUpdated()) {
             return;
+        }
         let ds = mgr.getDataSource(this.getDataSourceName());
-        if (ds.getDataCount() < 2)
+        if (ds.getDataCount() < 2) {
             return;
+        }
         let timeInterval = ds.getDataAt(1).date - ds.getDataAt(0).date;
         let n, cnt = TimelinePlotter.TIME_INTERVAL.length;
         for (n = 0; n < cnt; n++) {
-            if (timeInterval < TimelinePlotter.TIME_INTERVAL[n])
+            if (timeInterval < TimelinePlotter.TIME_INTERVAL[n]) {
                 break;
+            }
         }
         for (; n < cnt; n++) {
-            if (TimelinePlotter.TIME_INTERVAL[n] % timeInterval === 0)
-                if ((TimelinePlotter.TIME_INTERVAL[n] / timeInterval) * timeline.getColumnWidth() > 60)
+            if (TimelinePlotter.TIME_INTERVAL[n] % timeInterval === 0) {
+                if ((TimelinePlotter.TIME_INTERVAL[n] / timeInterval) * timeline.getColumnWidth() > 60) {
                     break;
+                }
+            }
         }
         let first = timeline.getFirstIndex();
         let last = timeline.getLastIndex();
@@ -1130,7 +1156,9 @@ export class TimelinePlotter extends Plotter {
         let top = area.getTop();
         let middle = area.getMiddle();
         for (let i = first; i < last; i++) {
-            let utcDate = ds.getDataAt(i).date;
+            let data = ds.getDataAt(i);
+            if (!data) continue;
+            let utcDate = data.date;
             let localDate = utcDate - local_utc_diff;
             let time = new Date(utcDate);
             let year = time.getFullYear();
@@ -1140,21 +1168,21 @@ export class TimelinePlotter extends Plotter {
             let minute = time.getMinutes();
             let text = "";
             if (n < cnt) {
-                let m = Math.max(
-                    TimelinePlotter.TP_DAY,
-                    TimelinePlotter.TIME_INTERVAL[n]);
+                let m = Math.max(TimelinePlotter.TP_DAY, TimelinePlotter.TIME_INTERVAL[n]);
                 if (localDate % m === 0) {
-                    if (lang === "zh-cn")
+                    if (lang === "zh-cn") {
                         text = month.toString() + "月" + date.toString() + "日";
-                    else if (lang === "zh-tw")
+                    } else if (lang === "zh-tw") {
                         text = month.toString() + "月" + date.toString() + "日";
-                    else if (lang === "en-us")
+                    } else if (lang === "en-us") {
                         text = TimelinePlotter.MonthConvert[month] + " " + date.toString();
+                    }
                     context.fillStyle = theme.getColor(themes.Theme.Color.Text4);
                 } else if (localDate % TimelinePlotter.TIME_INTERVAL[n] === 0) {
                     let strMinute = minute.toString();
-                    if (minute < 10)
+                    if (minute < 10) {
                         strMinute = "0" + strMinute;
+                    }
                     text = hour.toString() + ":" + strMinute;
                     context.fillStyle = theme.getColor(themes.Theme.Color.Text2);
                 }
@@ -1738,6 +1766,26 @@ export class TimelineSelectionPlotter extends Plotter {
             text += ":" + strSecond;
         }
         context.fillText(text, x, area.getMiddle());
+    }
+
+}
+
+
+export class TimelineAreaBackgroundPlotter extends BackgroundPlotter {
+
+    constructor(name) {
+        super(name);
+    }
+
+    Draw(context) {
+        let mgr = ChartManager.instance;
+        let area = mgr.getArea(this.getAreaName());
+        let timeline = mgr.getTimeline(this.getDataSourceName());
+        if (!area.isChanged() && !timeline.isUpdated())
+            return;
+        let theme = mgr.getTheme(this.getFrameName());
+        context.fillStyle = theme.getColor(this._color);
+        context.fillRect(area.getLeft(), area.getTop(), area.getWidth(), area.getHeight());
     }
 
 }

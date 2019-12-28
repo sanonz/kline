@@ -100,10 +100,16 @@ export class MainDataProvider extends DataProvider {
         this._candlestickDS = ds;
     }
 
-    getMinMaxAt(index, minmax) {
+    getMinMaxAt(index, value) {
         let data = this._candlestickDS.getDataAt(index);
-        minmax.min = data.low;
-        minmax.max = data.high;
+        if (data) {
+            value.min = data.low;
+            value.max = data.high;
+        } else {
+            value.min = NaN;
+            value.max = NaN;
+        }
+
         return true;
     }
 

@@ -1,4 +1,4 @@
-import {Control} from './control'
+import Kline from './kline'
 import {Chart} from './chart'
 import * as indicators from './indicators'
 import * as ranges from './ranges'
@@ -65,6 +65,7 @@ export class ChartManager {
         this._overlayCanvas = null;
         this._mainContext = null;
         this._overlayContext = null;
+        this._selectedIndicators = [];
 
         if (!ChartManager.created) {
             ChartManager.instance = this;
@@ -98,9 +99,6 @@ export class ChartManager {
         } else if (layer === "overlay") {
             this._overlayCanvas = canvas;
             this._overlayContext = canvas.getContext("2d");
-            if (this._captureMouseWheelDirectly) {
-                $(this._overlayCanvas).bind('mousewheel', Control.mouseWheel);
-            }
         }
     }
 
@@ -110,10 +108,6 @@ export class ChartManager {
 
     setCaptureMouseWheelDirectly(v) {
         this._captureMouseWheelDirectly = v;
-        if (v)
-            $(this._overlayCanvas).bind('mousewheel', Control.mouseWheel);
-        else
-            $(this._overlayCanvas).unbind('mousewheel');
     }
 
     getChart(nouseParam) {
@@ -216,17 +210,22 @@ export class ChartManager {
 
     setNormalMode() {
         this._drawingTool = this._beforeDrawingTool;
-        $(".chart_dropdown_data").removeClass("chart_dropdown-hover");
-        $("#chart_toolpanel .chart_toolpanel_button").removeClass("selected");
-        $("#chart_CrossCursor").parent().addClass("selected");
+        if (Kline.instance._onToolPanelEvt) {
+            Kline.instance._onToolPanelEvt.raise('CrossCursor');
+        }
         if (this._drawingTool === ChartManager.DrawingTool.Cursor) {
             this.showCursor();
-            $("#mode a").removeClass("selected");
-            $("#chart_toolpanel .chart_toolpanel_button").removeClass("selected");
-            $("#chart_Cursor").parent().addClass("selected");
+
+            if (Kline.instance._onToolPanelEvt) {
+                Kline.instance._onToolPanelEvt.raise('Cursor');
+            }
         } else {
             this.hideCursor();
         }
+    }
+
+    setRunningModeByName(name) {
+        this.setRunningMode(ChartManager.DrawingTool[name]);
     }
 
     setRunningMode(mode) {
@@ -490,7 +489,7 @@ export class ChartManager {
         if (ds.getDataCount() < 1)
             plotterNames = [".selection"];
         else
-            plotterNames = [".decoration", ".selection", ".info", ".tool"];
+            plotterNames = [".decoration", ".selection", ".info", ".tab", ".tool"];
         this.drawArea(context, area, plotterNames);
     }
 
@@ -538,13 +537,17 @@ export class ChartManager {
         }
     }
 
-    updateData(dsName, data) {
+    updateData(dsName, data, append) {
         let ds = this.getDataSource(dsName);
         if (ds === undefined || ds === null) {
             return;
         }
         if (data !== undefined && data !== null) {
-            if (!ds.update(data)) {
+            if (append) {
+                if (!ds.unshift(data)) {
+                    return false;
+                }
+            } else if (!ds.update(data)) {
                 return false;
             }
             if (ds.getUpdateMode() === data_sources.DataSource.UpdateMode.DoNothing)
@@ -823,14 +826,9 @@ export class ChartManager {
                 if (this._selectedFrame !== null && this._selectedFrame !== undefined && this._selectedFrame !== frame)
                     this._selectedFrame.select(null);
                 if (this._capturingMouseArea.isSelected()) {
-                    if (!this._captureMouseWheelDirectly)
-                        $(this._overlayCanvas).unbind('mousewheel');
                     frame.select(null);
                     this._selectedFrame = null;
                 } else {
-                    if (this._selectedFrame !== frame)
-                        if (!this._captureMouseWheelDirectly)
-                            $(this._overlayCanvas).bind('mousewheel', Control.mouseWheel);
                     frame.select(this._capturingMouseArea);
                     this._selectedFrame = frame;
                 }
@@ -1038,7 +1036,8 @@ export class ChartManager {
         dp.setIndicator(indic);
         this.setRange(areaName, range);
         range.setPaddingTop(20);
-        range.setPaddingBottom(4);
+        // range.setPaddingBottom(4); origin
+        range.setPaddingBottom('tabHeight' in area.constructor ? area.constructor.tabHeight: 4);
         range.setMinInterval(20);
         if (Util.isInstance(indic, indicators.VOLUMEIndicator)) {
             let plotter = new plotters.LastVolumePlotter(areaName + "Range.decoration");
@@ -1062,6 +1061,29 @@ export class ChartManager {
         this.removeDataProvider(indicDpName);
         this.removePlotter(indicDpName);
         this.getArea(areaName).setChanged(true);
+    }
+
+    setIndicatorInterface(index, name) {
+        var frame;
+        if ("NONE" == name) {
+            frame = this.getIndicatorAreaName("frame0.k0", index);
+            if ("" != frame) {
+                this.removeIndicatorInterface(index)
+            }
+        } else {
+            frame = this.getIndicatorAreaName("frame0.k0", index);
+            if ("" == frame) {
+                templates.Template.createIndicatorChartComps("frame0.k0", name);
+            } else {
+                this.setIndicator(frame, name);
+            }
+        }
+    }
+
+    removeIndicatorInterface(index, refresh) {
+        let frame = this.getIndicatorAreaName("frame0.k0", index);
+        this.removeIndicator(frame),
+        refresh && this.redraw("All", true);
     }
 
     removeIndicator(areaName) {

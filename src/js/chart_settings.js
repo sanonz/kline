@@ -30,7 +30,7 @@ export class ChartSettings {
     }
 
     static get () {
-        if (ChartSettings._data === undefined) {
+        if (!ChartSettings._data) {
             ChartSettings.init();
             ChartSettings.load();
             ChartSettings.checkVersion();
@@ -53,7 +53,7 @@ export class ChartSettings {
         let _chart_style = 'CandleStick';
         let _m_indic = 'MA';
         let _indic = ['VOLUME', 'MACD'];
-        let _range = '15m';
+        let _range = '1h';
         let _frame = {};
         _frame.chartStyle = _chart_style;
         _frame.mIndic = _m_indic;
@@ -64,29 +64,20 @@ export class ChartSettings {
             ver: 1,
             charts: _frame,
             indics: _indic_param,
-            theme: "Dark"
+            theme: "dark"
         };
         ChartSettings.checkVersion();
     }
 
     static load() {
-        if (document.cookie.length <= 0)
+        const store = window.localStorage || {};
+        if (!store._kchart_)
             return;
-        let start = document.cookie.indexOf("chartSettings=");
-        if (start < 0)
-            return;
-        start += "chartSettings=".length;
-        let end = document.cookie.indexOf(";", start);
-        if (end < 0)
-            end = document.cookie.length;
-        let json = unescape(document.cookie.substring(start, end));
-        ChartSettings._data = JSON.parse(json);
+        ChartSettings._data = JSON.parse(store._kchart_);
     }
 
     static save() {
-        let exdate = new Date();
-        exdate.setDate(exdate.getDate() + 2);
-        document.cookie = "chartSettings=" + escape(JSON.stringify(ChartSettings._data)) +
-            ";expires=" + exdate.toGMTString();
+        const store = window.localStorage || {};
+        store._kchart_ = JSON.stringify(ChartSettings._data);
     }
 }
